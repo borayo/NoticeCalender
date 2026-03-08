@@ -5,6 +5,7 @@
   ~1/28, ~01/28, ~1.28, ~ 1/28
   ~2026.1.28, ~2026-01-28, ~2026/1/28
   마감 1/28, 마감: 1/28, 마감일: 2026.1.28, 신청마감 1/28
+  제출기한: 1/28, 접수마감 1/28, 신청기간 ~ 1/28
   (1/28까지), (1월 28일까지)
   1/15~1/28  (범위 → 끝 날짜)
   2026년 1월 28일까지
@@ -29,6 +30,8 @@ def extract_deadline(text: str, reference_date: Optional[date] = None) -> Option
         _extract_tilde_md,        # ~1/28, ~01.28
         _extract_deadline_ymd,    # 마감 2026.1.28
         _extract_deadline_md,     # 마감 1/28, 신청마감 1/28
+        _extract_body_keywords_ymd,  # 제출기한: 2026.1.28, 접수마감일: 2026-01-28
+        _extract_body_keywords_md,   # 제출기한: 1/28, 접수마감 1/28
         _extract_md_kkaji,        # 1/28까지, 1.28까지
         _extract_korean_md_kkaji, # 1월 28일까지
         _extract_korean_ymd_kkaji,# 2026년 1월 28일까지
@@ -108,6 +111,30 @@ def _extract_deadline_md(text: str, ref: date) -> Optional[date]:
     m = re.search(r'마감[일]?\s*[:：]?\s*(\d{1,2})[./](\d{1,2})', text)
     if m:
         return _infer_year(int(m.group(1)), int(m.group(2)), ref)
+    return None
+
+
+def _extract_body_keywords_ymd(text: str, ref: date) -> Optional[date]:
+    """제출기한: 2026.1.28 / 접수마감일: 2026-01-28 / 신청기간: 2026/1/28"""
+    m = re.search(
+        r'(제출기한|접수기한|접수마감|접수마감일|신청기간|신청마감)\s*[:：]?\s*'
+        r'(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})',
+        text,
+    )
+    if m:
+        return _safe_date(int(m.group(2)), int(m.group(3)), int(m.group(4)))
+    return None
+
+
+def _extract_body_keywords_md(text: str, ref: date) -> Optional[date]:
+    """제출기한: 1/28 / 접수마감 1/28 / 신청기간 ~ 1/28"""
+    m = re.search(
+        r'(제출기한|접수기한|접수마감|접수마감일|신청기간|신청마감)\s*[:：~]?\s*'
+        r'(\d{1,2})[./](\d{1,2})',
+        text,
+    )
+    if m:
+        return _infer_year(int(m.group(2)), int(m.group(3)), ref)
     return None
 
 

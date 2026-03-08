@@ -6,6 +6,8 @@ SKKU 공지사항 크롤러.
 import logging
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date as date_type
 from typing import Optional
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode
 
@@ -17,6 +19,23 @@ from database import upsert_notice
 from date_parser import extract_deadline, extract_category, clean_title
 
 logger = logging.getLogger(__name__)
+
+# 본문 병렬 요청 수 (서버 부하 고려)
+BODY_FETCH_WORKERS = 8
+
+# 본문 영역 CSS 셀렉터 (SKKU CMS 공통 패턴)
+BODY_SELECTORS = [
+    ".board-view-content",
+    ".board-content",
+    ".view-content",
+    ".article-content",
+    ".board-body",
+    ".c-board-view-content",
+    "div.board-view-body",
+    "div[class*='view-content']",
+    "div[class*='board-content']",
+    "#content",
+]
 
 
 def scrape_all() -> dict:
@@ -74,6 +93,80 @@ def scrape_source(source: dict) -> dict:
     return result
 
 
+def _fill_deadlines_from_bodies(notices: list[dict]) -> None:
+    """
+    마감일이 없는 공지에 대해 본문을 병렬로 조회하여 마감일을 채운다.
+    notices를 in-place로 수정한다.
+    """
+    # 본문 조회가 필요한 공지 수집
+    tasks = []
+    indices = []
+    for i, n in enumerate(notices):
+        if n.get("deadline") is not None:
+            continue
+        ref_date = None
+        if n.get("posted_date"):
+            try:
+                parts = n["posted_date"].split("-")
+                ref_date = date_type(int(parts[0]), int(parts[1]), int(parts[2]))
+            except (ValueError, IndexError):
+                pass
+        if ref_date is None:
+            ref_date = date_type.today()
+        tasks.append((n["url"], n["title"], ref_date))
+        indices.append(i)
+
+    if not tasks:
+        return
+
+    def _fetch_and_extract(args):
+        url, raw_title, ref = args
+        body = fetch_article_body(url)
+        if not body:
+            return None
+        combined = f"{raw_title}\n\n{body}"
+        return extract_deadline(combined, reference_date=ref)
+
+    with ThreadPoolExecutor(max_workers=BODY_FETCH_WORKERS) as ex:
+        results = list(ex.map(_fetch_and_extract, tasks))
+
+    for idx, deadline in zip(indices, results):
+        if deadline:
+            notices[idx]["deadline"] = deadline
+
+
+def fetch_article_body(url: str) -> Optional[str]:
+    """
+    공지 상세 페이지에서 본문 텍스트를 추출한다.
+    마감일이 제목에 없을 때 본문에서 찾기 위해 사용.
+    """
+    try:
+        resp = requests.get(url, headers=REQUEST_HEADERS, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        resp.encoding = resp.apparent_encoding or "utf-8"
+        soup = BeautifulSoup(resp.text, "lxml")
+
+        for selector in BODY_SELECTORS:
+            elem = soup.select_one(selector)
+            if elem:
+                text = elem.get_text(separator="\n", strip=True)
+                if text and len(text) > 20:  # 의미 있는 본문인지 확인
+                    return text
+
+        # 폴백: main, article, .content 등
+        for tag in ("main", "article"):
+            elem = soup.find(tag, class_=re.compile(r"content|body|view", re.I))
+            if elem:
+                text = elem.get_text(separator="\n", strip=True)
+                if text and len(text) > 20:
+                    return text
+
+        return None
+    except Exception as e:
+        logger.debug(f"본문 조회 실패 ({url}): {e}")
+        return None
+
+
 def fetch_notice_list(url: str, source: dict) -> list[dict]:
     """공지사항 목록 페이지를 파싱하여 공지 리스트를 반환한다."""
     resp = requests.get(url, headers=REQUEST_HEADERS, timeout=REQUEST_TIMEOUT)
@@ -91,14 +184,16 @@ def fetch_notice_list(url: str, source: dict) -> list[dict]:
         board_list = soup.select("dl.board-list dt, div.board-name")
     if not board_list:
         # 방법 3: 모든 링크 중 mode=view 포함하는 것들
-        board_list = _fallback_parse(soup, source)
-        return board_list
+        notices = _fallback_parse(soup, source)
+        _fill_deadlines_from_bodies(notices)
+        return notices
 
     for item in board_list:
         notice = _parse_list_item(item, source)
         if notice:
             notices.append(notice)
 
+    _fill_deadlines_from_bodies(notices)
     return notices
 
 
@@ -142,7 +237,7 @@ def _parse_list_item(item, source: dict) -> Optional[dict]:
     # 게시일 추출
     posted_date = _extract_posted_date(item)
 
-    # 마감일 추출 (제목에서, 게시일 기준으로 연도 추론)
+    # 마감일 추출 (제목 → 본문 순으로 시도)
     ref_date = None
     if posted_date:
         try:
@@ -195,7 +290,7 @@ def _fallback_parse(soup: BeautifulSoup, source: dict) -> list[dict]:
         if parent:
             posted_date = _extract_posted_date(parent)
 
-        # 마감일 추출 (게시일 기준으로 연도 추론)
+        # 마감일 추출 (제목 → 본문 순으로 시도)
         ref_date = None
         if posted_date:
             try:

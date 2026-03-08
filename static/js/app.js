@@ -26,6 +26,28 @@ document.addEventListener("DOMContentLoaded", () => {
   loadUpcoming();
 });
 
+/** 현재 필터 기준으로 API URL 생성 */
+function buildEventsUrl(start, end) {
+  const params = new URLSearchParams({ start, end });
+  if (currentSource !== "all") params.set("source", currentSource);
+  return `/api/events?${params}`;
+}
+
+/** 이벤트 소스 함수 (currentSource 클로저로 참조) */
+function createEventSource() {
+  return function (info, successCallback, failureCallback) {
+    const start = info.startStr.split("T")[0];
+    const end = info.endStr.split("T")[0];
+    fetch(buildEventsUrl(start, end))
+      .then((r) => r.json())
+      .then((events) => {
+        allEvents = events;
+        successCallback(events);
+      })
+      .catch(failureCallback);
+  };
+}
+
 function initCalendar() {
   const calendarEl = document.getElementById("calendar");
 
@@ -48,24 +70,7 @@ function initCalendar() {
     navLinks: true,
     eventDisplay: "block",
 
-    // 이벤트 소스
-    events: function (info, successCallback, failureCallback) {
-      const params = new URLSearchParams({
-        start: info.startStr.split("T")[0],
-        end: info.endStr.split("T")[0],
-      });
-      if (currentSource !== "all") {
-        params.set("source", currentSource);
-      }
-
-      fetch(`/api/events?${params}`)
-        .then((r) => r.json())
-        .then((events) => {
-          allEvents = events;
-          successCallback(events);
-        })
-        .catch(failureCallback);
-    },
+    events: createEventSource(),
 
     // 이벤트 클릭 → 모달 열기 (원래 URL로 바로 안 감)
     eventClick: function (info) {
@@ -89,12 +94,15 @@ function initCalendar() {
 function initFilters() {
   document.querySelectorAll(".filter-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
-      // 활성 상태 토글
       document.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("active"));
       chip.classList.add("active");
 
       currentSource = chip.dataset.source;
-      calendar.refetchEvents();
+
+      // 이벤트 소스 교체 (필터가 제대로 적용되도록)
+      calendar.getEventSources().forEach((s) => s.remove());
+      calendar.addEventSource(createEventSource());
+
       loadUpcoming();
     });
   });
