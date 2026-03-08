@@ -3,6 +3,7 @@ SKKU 공지사항 캘린더 - FastAPI 메인 애플리케이션.
 """
 
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -38,19 +39,25 @@ def scheduled_scrape():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """앱 시작/종료 시 실행."""
-    # 시작
+    # 1. DB 초기화 (이건 순식간이라 그대로 둠)
     init_db()
     logger.info("DB 초기화 완료")
 
-    # 첫 스크래핑 실행
-    logger.info("초기 스크래핑 시작...")
-    try:
-        stats = scrape_all()
-        logger.info(f"초기 스크래핑 완료: {stats}")
-    except Exception as e:
-        logger.error(f"초기 스크래핑 실패: {e}", exc_info=True)
+    # 2. [핵심 수정] 초기 스크래핑을 '비동기 백그라운드'로 실행
+    # 이렇게 하면 scrape_all이 끝나길 기다리지 않고 바로 다음 줄(yield)로 넘어갑니다.
+    async def run_bg_scrape():
+        logger.info("백그라운드 초기 스크래핑 시작...")
+        try:
+            # 동기 함수인 scrape_all을 별도 스레드에서 돌려 서버가 안 멈추게 함
+            stats = await asyncio.to_thread(scrape_all)
+            logger.info(f"백그라운드 초기 스크래핑 완료: {stats}")
+        except Exception as e:
+            logger.error(f"초기 스크래핑 실패: {e}")
 
-    # 주기적 스크래핑 스케줄
+    # 서버 문을 열면서 동시에 백그라운드에서 스크래핑 시작!
+    asyncio.create_task(run_bg_scrape())
+
+    # 3. 주기적 스케줄 설정 (그대로 유지)
     scheduler.add_job(
         scheduled_scrape,
         "interval",
@@ -59,13 +66,10 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
     )
     scheduler.start()
-    logger.info(f"스케줄러 시작 (매 {SCRAPE_INTERVAL_HOURS}시간 스크래핑)")
+    
+    yield 
 
-    yield
-
-    # 종료
     scheduler.shutdown()
-    logger.info("스케줄러 종료")
 
 
 # ── FastAPI 앱 ──────────────────────────────────────────────────
@@ -166,4 +170,7 @@ async def ics_feed(source: str = Query(None)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host=HOST, port=PORT, reload=True)
+    import os
+    # Render가 주는 PORT 환경변수를 읽고, 없으면 config의 PORT를 씁니다.
+    port = int(os.environ.get("PORT", PORT))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
