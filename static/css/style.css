@@ -526,7 +526,7 @@ body {
   .calendar-container { padding: .75rem; }
   .fc .fc-toolbar { flex-direction: column; gap: .5rem; }
   .fc .fc-toolbar-title { font-size: 1rem !important; }
-  .upcoming-card { flex-direction: column; gap: .5rem; }
-  .upcoming-date { align-self: flex-start; }
+  .upcoming-card { flex-direction: column; gap: 1rem; align-items: flex-start; }
+  .upcoming-date { align-self: flex-start; margin-left: 0; text-align: left; }
   .main { padding: 1rem; }
 }
