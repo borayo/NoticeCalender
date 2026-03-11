@@ -39,7 +39,7 @@ NOTICE_SOURCES = [
         "short_name": "지능형SW",
         "base_url": "https://intelligentsw.skku.edu/intelligentsw/notice.do",
         "list_url": "https://intelligentsw.skku.edu/intelligentsw/notice.do?mode=list&article.offset={offset}&articleLimit=10",
-        "color": "#7C3AED",       # 보라색
+        "color": "#EC4899",       # 핑크색
         "pages_to_scrape": 5,
     },
 ]

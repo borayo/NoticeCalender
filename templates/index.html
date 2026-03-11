@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SKKU 공지 캘린더</title>
+  <title>SKKU 공지사항 캘린더</title>
+  
+  <!-- 파비콘 -->
+  <link rel="icon" type="image/svg+xml" href="/static/logo.png">
 
   <!-- FullCalendar v6 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" />
@@ -23,17 +26,10 @@
       <div class="header-left">
         <h1 class="logo">
           <span class="logo-icon">📅</span>
-          SKKU 공지 캘린더
-        </h1>
-        <p class="subtitle">성균관대 공지사항 마감일 자동 추적</p>
-      </div>
+          SKKU 공지사항 캘린더
+        </h1>      </div>
       <div class="header-right">
-        <button id="btn-scrape" class="btn btn-primary" title="지금 바로 새 공지 가져오기">
-          <span class="btn-icon">🔄</span> 새로고침
-        </button>
-        <a href="/feed.ics" class="btn btn-outline" title="ICS 피드 구독">
-          <span class="btn-icon">📲</span> ICS 구독
-        </a>
+        <!-- 버튼 제거 -->
       </div>
     </div>
   </header>
@@ -43,7 +39,7 @@
     <!-- 필터 바 -->
     <div class="filter-bar">
       <div class="filter-group">
-        <span class="filter-label">소스 필터:</span>
+        <span class="filter-label">카테고리 필터:</span>
         <button class="filter-chip active" data-source="all">전체</button>
         {% for source in sources %}
         <button class="filter-chip" data-source="{{ source.id }}"
@@ -52,9 +48,6 @@
           {{ source.short_name }}
         </button>
         {% endfor %}
-      </div>
-      <div class="stats-bar" id="stats-bar">
-        <span id="stats-text">로딩 중...</span>
       </div>
     </div>
 

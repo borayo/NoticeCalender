@@ -74,7 +74,7 @@ async def lifespan(app: FastAPI):
 
 # ── FastAPI 앱 ──────────────────────────────────────────────────
 app = FastAPI(
-    title="SKKU 공지 캘린더",
+    title="SKKU 공지사항 캘린더",
     description="성균관대학교 공지사항 마감일 캘린더",
     lifespan=lifespan,
 )

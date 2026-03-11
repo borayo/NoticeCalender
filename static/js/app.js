@@ -20,9 +20,7 @@ document.querySelectorAll(".filter-chip[data-source]").forEach((chip) => {
 document.addEventListener("DOMContentLoaded", () => {
   initCalendar();
   initFilters();
-  initScrapeButton();
   initModal();
-  loadStats();
   loadUpcoming();
 });
 
@@ -109,32 +107,7 @@ function initFilters() {
 }
 
 // ── 새로고침 (수동 스크래핑) ──────────────────────────
-function initScrapeButton() {
-  const btn = document.getElementById("btn-scrape");
-  btn.addEventListener("click", async () => {
-    btn.classList.add("loading");
-    btn.innerHTML = '<span class="btn-icon">⏳</span> 스크래핑 중...';
-
-    try {
-      const resp = await fetch("/api/scrape", { method: "POST" });
-      const data = await resp.json();
-
-      showToast(
-        `✅ 완료! ${data.stats.total_scraped}건 확인, ${data.stats.new_notices}건 신규`
-      );
-
-      // 캘린더 & 목록 새로고침
-      calendar.refetchEvents();
-      loadUpcoming();
-      loadStats();
-    } catch (e) {
-      showToast("❌ 스크래핑 실패. 다시 시도해주세요.");
-    } finally {
-      btn.classList.remove("loading");
-      btn.innerHTML = '<span class="btn-icon">🔄</span> 새로고침';
-    }
-  });
-}
+// 기능 제거됨
 
 // ── 다가오는 마감일 로드 ──────────────────────────────
 async function loadUpcoming() {
@@ -157,60 +130,95 @@ async function loadUpcoming() {
       return;
     }
 
-    // 날짜 순 정렬, 최대 10개
-    events.sort((a, b) => a.start.localeCompare(b.start));
-    const upcoming = events.slice(0, 10);
-
-    container.innerHTML = upcoming.map((ev) => {
+    // 날짜별로 그룹화 (D-7 이내만 필터링)
+    const eventsByDate = {};
+    events.forEach(ev => {
       const deadline = new Date(ev.start + "T00:00:00");
       const now = new Date();
       now.setHours(0, 0, 0, 0);
       const diffDays = Math.ceil((deadline - now) / 86400000);
+      
+      // D-7 이내의 공지만 포함 (과거 제외)
+      if (diffDays >= 0 && diffDays <= 7) {
+        const date = ev.start;
+        if (!eventsByDate[date]) {
+          eventsByDate[date] = [];
+        }
+        eventsByDate[date].push(ev);
+      }
+    });
 
-      const day = deadline.getDate();
-      const monthNames = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
-      const month = monthNames[deadline.getMonth()];
-
-      let ddayText, ddayClass;
-      if (diffDays < 0) {
-        ddayText = `D+${Math.abs(diffDays)}`;
-        ddayClass = "dday-past";
-      } else if (diffDays === 0) {
-        ddayText = "D-Day";
-        ddayClass = "dday-urgent";
-      } else if (diffDays <= 3) {
-        ddayText = `D-${diffDays}`;
-        ddayClass = "dday-urgent";
-      } else if (diffDays <= 7) {
-        ddayText = `D-${diffDays}`;
-        ddayClass = "dday-soon";
-      } else {
-        ddayText = `D-${diffDays}`;
-        ddayClass = "dday-normal";
+    // 날짜 순 정렬
+    const sortedDates = Object.keys(eventsByDate).sort();
+    
+    if (sortedDates.length === 0) {
+      container.innerHTML = '<p class="placeholder">D-7 이내의 마감일이 없습니다</p>';
+      return;
+    }
+    
+    let html = "";
+    sortedDates.forEach((date, dateIndex) => {
+      const dateEvents = eventsByDate[date];
+      
+      // 날짜 구분선 추가 (첫 날짜 제외)
+      if (dateIndex > 0) {
+        html += `<div class="date-divider"></div>`;
       }
 
-      const color = ev.color || "#6B7280";
-      const sourceName = ev.extendedProps?.source_name || "";
-      const category = ev.extendedProps?.category || "";
+      // 해당 날짜의 이벤트들
+      dateEvents.forEach(ev => {
+        const deadline = new Date(ev.start + "T00:00:00");
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((deadline - now) / 86400000);
 
-      return `
-        <a href="${ev.url}" target="_blank" class="upcoming-card" style="--card-color: ${color}">
-          <div class="upcoming-date">
-            <div class="month">${month}</div>
-            <div class="day">${day}</div>
-            <span class="dday ${ddayClass}">${ddayText}</span>
-          </div>
-          <div class="upcoming-info">
-            <div class="title">${escapeHtml(ev.title)}</div>
-            <div class="meta">
-              <span class="badge" style="background: ${color}22; color: ${color}">${sourceName}</span>
-              <span class="badge">${category}</span>
-              <span>${ev.start}</span>
+        const day = deadline.getDate();
+        const monthNames = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+        const month = monthNames[deadline.getMonth()];
+
+        let ddayText, ddayClass;
+        if (diffDays < 0) {
+          ddayText = `D+${Math.abs(diffDays)}`;
+          ddayClass = "dday-past";
+        } else if (diffDays === 0) {
+          ddayText = "D-Day";
+          ddayClass = "dday-urgent";
+        } else if (diffDays <= 3) {
+          ddayText = `D-${diffDays}`;
+          ddayClass = "dday-urgent";
+        } else if (diffDays <= 7) {
+          ddayText = `D-${diffDays}`;
+          ddayClass = "dday-soon";
+        } else {
+          ddayText = `D-${diffDays}`;
+          ddayClass = "dday-normal";
+        }
+
+        const color = ev.color || "#6B7280";
+        const sourceName = ev.extendedProps?.source_name || "";
+        const category = ev.extendedProps?.category || "";
+
+        html += `
+          <a href="${ev.url}" target="_blank" class="upcoming-card" style="--card-color: ${color}">
+            <div class="upcoming-date">
+              <div class="month">${month}</div>
+              <div class="day">${day}</div>
+              <span class="dday ${ddayClass}">${ddayText}</span>
             </div>
-          </div>
-        </a>
-      `;
-    }).join("");
+            <div class="upcoming-info">
+              <div class="title">${escapeHtml(ev.title)}</div>
+              <div class="meta">
+                <span class="badge" style="background: ${color}22; color: ${color}">${sourceName}</span>
+                <span class="badge">${category}</span>
+                <span>${ev.start}</span>
+              </div>
+            </div>
+          </a>
+        `;
+      });
+    });
+
+    container.innerHTML = html;
   } catch (e) {
     container.innerHTML = '<p class="placeholder">로딩 실패</p>';
   }
@@ -218,14 +226,7 @@ async function loadUpcoming() {
 
 // ── 통계 로드 ────────────────────────────────────────
 async function loadStats() {
-  try {
-    const resp = await fetch("/api/stats");
-    const stats = await resp.json();
-    document.getElementById("stats-text").textContent =
-      `총 ${stats.total}건 수집 · ${stats.with_deadline}건 마감일 감지`;
-  } catch (e) {
-    // 무시
-  }
+  // 통계 표시 제거
 }
 
 // ── 모달 ─────────────────────────────────────────────

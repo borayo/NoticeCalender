@@ -193,6 +193,17 @@ body {
   font-weight: 700;
 }
 
+.fc .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fc .fc-button-group {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
 .fc .fc-button {
   border-radius: var(--radius-sm) !important;
   font-weight: 600;
@@ -241,11 +252,16 @@ body {
   background: var(--primary);
   color: #fff;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 36px;
+  line-height: 1;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 /* ── 다가오는 마감일 섹션 ───────────────────────────── */
@@ -264,9 +280,16 @@ body {
   gap: .75rem;
 }
 
+.date-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 1rem 0;
+  opacity: 0.6;
+}
+
 .upcoming-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -278,6 +301,10 @@ body {
   text-decoration: none;
   color: inherit;
   border-left: 4px solid var(--card-color, var(--primary));
+}
+
+.upcoming-card:last-child {
+  border-bottom: none;
 }
 
 .upcoming-card:hover {
@@ -500,5 +527,6 @@ body {
   .fc .fc-toolbar { flex-direction: column; gap: .5rem; }
   .fc .fc-toolbar-title { font-size: 1rem !important; }
   .upcoming-card { flex-direction: column; gap: .5rem; }
+  .upcoming-date { align-self: flex-start; }
   .main { padding: 1rem; }
 }
