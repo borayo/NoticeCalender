@@ -188,6 +188,34 @@ body {
   --fc-neutral-bg-color: #F1F5F9;
 }
 
+.fc-popover {
+  background: #FFFFFF !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  max-width: 300px !important;
+  z-index: 999 !important;
+}
+
+.fc-popover-header {
+  background: #FFFFFF !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding: 8px 12px !important;
+  font-weight: 600 !important;
+}
+
+.fc-popover-body {
+  padding: 8px !important;
+  background: #FFFFFF !important;
+}
+
+.fc-popover-close {
+  background: none !important;
+  border: none !important;
+  font-size: 16px !important;
+  color: var(--text-muted) !important;
+}
+
 .fc .fc-toolbar-title {
   font-size: 1.2rem !important;
   font-weight: 700;
@@ -407,7 +435,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1001;
   padding: 1rem;
 }
 

@@ -100,7 +100,7 @@ async def index(request: Request):
 async def api_events(
     start: str = Query(None, description="시작일 (YYYY-MM-DD)"),
     end: str = Query(None, description="종료일 (YYYY-MM-DD)"),
-    source: str = Query(None, description="소스 필터"),
+    source: str = Query(None, description="카테고리 필터"),
 ):
     """FullCalendar용 이벤트 JSON API."""
     notices = get_notices_with_deadlines(

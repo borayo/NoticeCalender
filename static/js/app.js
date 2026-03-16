@@ -73,6 +73,11 @@ function initCalendar() {
     // 이벤트 클릭 → 모달 열기 (원래 URL로 바로 안 감)
     eventClick: function (info) {
       info.jsEvent.preventDefault();
+      // 더보기 팝업 닫기
+      const popover = document.querySelector('.fc-popover');
+      if (popover) {
+        popover.remove();
+      }
       showModal(info.event);
     },
 
@@ -82,6 +87,14 @@ function initCalendar() {
       el.title = info.event.title;
       el.style.borderRadius = "4px";
       el.style.fontSize = "0.75rem";
+      
+      // 더보기 팝업 스타일 적용
+      fixPopoverStyle();
+    },
+
+    // 더보기 링크 클릭 시 스타일 적용
+    moreLinkClick: function(info) {
+      setTimeout(() => fixPopoverStyle(), 100);
     },
   });
 
@@ -268,6 +281,73 @@ function showToast(message) {
 }
 
 // ── 유틸 ─────────────────────────────────────────────
+function fixPopoverStyle() {
+  setTimeout(() => {
+    const popover = document.querySelector('.fc-popover');
+    if (popover) {
+      const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
+      const popoverRect = popover.getBoundingClientRect();
+      
+      // 화면 중앙으로 위치 재조정
+      const leftPosition = Math.max(20, (screenWidth - Math.min(screenWidth - 40, 800)) / 2);
+      popover.style.left = `${leftPosition}px`;
+      popover.style.top = `${Math.max(20, popoverRect.top)}px`;
+      
+      // 최대 너비 설정
+      let maxWidth = '800px';
+      let minWidth = '400px';
+      
+      if (screenWidth < 768) {
+        maxWidth = `${screenWidth - 30}px`; // 모바일: 화면 너비에서 30px 뺌
+        minWidth = '280px';
+      } else if (screenWidth < 1024) {
+        maxWidth = `${screenWidth - 50}px`; // 태블릿: 화면 너비에서 50px 뺌
+        minWidth = '350px';
+      }
+      
+      popover.style.background = '#FFFFFF';
+      popover.style.border = '1px solid #E2E8F0';
+      popover.style.borderRadius = '8px';
+      popover.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      popover.style.maxWidth = maxWidth;
+      popover.style.minWidth = minWidth;
+      popover.style.width = 'auto';
+      popover.style.position = 'fixed';
+      popover.style.zIndex = '999';
+      
+      const header = popover.querySelector('.fc-popover-header');
+      if (header) {
+        header.style.background = '#FFFFFF';
+        header.style.borderBottom = '1px solid #E2E8F0';
+        header.style.padding = '8px 12px';
+        header.style.fontSize = '0.9rem';
+      }
+      
+      const body = popover.querySelector('.fc-popover-body');
+      if (body) {
+        body.style.background = '#FFFFFF';
+        body.style.padding = '8px 12px';
+        body.style.maxHeight = '60vh';
+        body.style.overflowY = 'auto';
+      }
+      
+      // 이벤트 항목 스타일 최적화
+      const eventLinks = popover.querySelectorAll('.fc-event-link');
+      eventLinks.forEach(link => {
+        link.style.whiteSpace = 'normal';
+        link.style.lineHeight = '1.2';
+        link.style.padding = '6px 8px';
+        link.style.fontSize = '0.8rem';
+        link.style.width = '100%';
+        link.style.display = 'block';
+        link.style.wordBreak = 'break-word';
+        link.style.overflowWrap = 'break-word';
+      });
+    }
+  }, 100);
+}
+
 function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
