@@ -104,7 +104,14 @@ function initCalendar() {
 // ── 필터 ─────────────────────────────────────────────
 function initFilters() {
   document.querySelectorAll(".filter-chip").forEach((chip) => {
+    // 원래 내용 저장
+    const originalContent = chip.innerHTML;
+    
     chip.addEventListener("click", () => {
+      // 필터 버튼에 로딩 상태 표시
+      chip.classList.add("loading");
+      chip.innerHTML = '<span class="chip-spinner"></span> 로딩 중...';
+      
       document.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("active"));
       chip.classList.add("active");
 
@@ -115,6 +122,12 @@ function initFilters() {
       calendar.addEventSource(createEventSource());
 
       loadUpcoming();
+      
+      // 로딩 상태 원복
+      setTimeout(() => {
+        chip.classList.remove("loading");
+        chip.innerHTML = originalContent; // 저장된 원래 내용으로 복원
+      }, 500);
     });
   });
 }
@@ -270,6 +283,26 @@ function showModal(event) {
   document.getElementById("modal-link").href = ext.original_url || event.url || "#";
 
   overlay.style.display = "flex";
+}
+
+// ── 로딩 표시 ─────────────────────────────────────────
+function showLoading() {
+  const loadingHtml = `
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="loading-spinner">
+        <div class="spinner"></div>
+        <div class="loading-text">로딩 중...</div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', loadingHtml);
+}
+
+function hideLoading() {
+  const loading = document.getElementById('loading-overlay');
+  if (loading) {
+    loading.remove();
+  }
 }
 
 // ── 토스트 ───────────────────────────────────────────
